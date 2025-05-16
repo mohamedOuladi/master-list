@@ -43,3 +43,5 @@ Thumbs.db
 
 /venv
 .nox
+
+packages/master-list-api/venv
