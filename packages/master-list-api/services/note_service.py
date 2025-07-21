@@ -9,6 +9,20 @@ from models.models import NoteCreation, NoteEntry, TagEntry
 from sqlalchemy import and_, select, delete, tuple_, update
 from sqlalchemy import func, case
 from .util_service import UtilService
+from openfga_sdk.client import ClientConfiguration, OpenFgaClient
+import os
+import asyncio
+
+FGA_API_URL = "http://localhost:8080"  # Or use os.environ.get('FGA_API_URL')
+FGA_STORE_ID = "01JYSF6GB4VK8Y7HJ7EE13Q9QV"
+FGA_MODEL_ID = "01JZ8JNCWRWD3Z4YKMGJSV5KZN"
+
+configuration = ClientConfiguration(
+    api_url=FGA_API_URL,
+    store_id=FGA_STORE_ID,
+    authorization_model_id=FGA_MODEL_ID,
+)
+
 
 class NoteService:
     def __init__(self, db: Session):
@@ -36,6 +50,19 @@ class NoteService:
         self.db.add(note)
         self.db.commit()
         self.db.refresh(note)
+
+        # Add FGA tuple: user is owner of note
+        tuple_key = {
+            "user": f"user:{user_id}",
+            "relation": "owner",
+            "object": f"note:{note.id}"
+        }
+        try:
+            with OpenFgaClient(configuration) as fga_client:
+                fga_client.write({"writes": [{"tuple_key": tuple_key}]})
+        except Exception as e:
+            # Log or handle FGA errors as needed
+            print(f"Failed to write FGA tuple for note {note.id}: {e}")
         
         return NoteCreation( # TODO: Change to NoteEntry
             id=note.id,
