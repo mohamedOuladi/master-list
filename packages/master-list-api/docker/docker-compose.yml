@@ -48,6 +48,20 @@ services:
     profiles:
       - init
 
+
+    #       - POSTGRES_USER=test_user
+    #   - POSTGRES_PASSWORD=test_password
+    #   - POSTGRES_DB=test_db
+    # ports:
+    #   - "5433:5432"  # Expose test DB on a different port
+    # healthcheck:
+    #   test: ["CMD", "pg_isready", "-U", "test_user", "-d", "test_db"]
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 5
+    # profiles:
+    #   - test
+
   openfga:
     image: openfga/openfga:v1.5.4
     restart: always
