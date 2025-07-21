@@ -1,0 +1,121 @@
+<div class="note-list-area">
+    <div class="toolbar">
+        <div class="text-style-group">
+            <button (click)="applyInlineStyle('bold')" title="Bold">B</button>
+            <button (click)="applyInlineStyle('italic')" title="Italic">I</button>
+            <button (click)="applyInlineStyle('large')" title="Large Text">T</button>
+            <button (click)="applyInlineStyle('strike')" title="Large Text">S</button>
+            <button (click)="applyInlineStyle('underline')" title="Large Text">U</button>
+            <button (click)="mergeNoteItems()" title="Large Text">Merge</button>
+        </div>
+        <div>
+            <button (click)="cutNoteItems()">Cut</button>
+            <button (click)="pasteNoteItems()">Paste</button>
+        </div>
+
+        <select name="" (change)="setHighlight($event)">
+            <option value="">Select To Highlight</option>
+            <option value="">All</option>
+            @for(name of tagHighlightNames; track name) {
+            <option [value]="name">{{name}}</option>
+            }
+        </select>
+        <button (click)="saveNoteElements(true)">Save Note Elements (getToken testing)</button>
+        <button [disabled]="!error" (click)="clearError()">Clear Error</button>
+        <button (click)="clearList(true)">Clear Note</button>
+        <button (click)="logOut()">Log Out</button>
+        <div (clickOutside)="showExtraMenu = false" [hidden]="listType !== 'note' && listType !== 'tag'">
+            <button (click)="showExtraMenu = !showExtraMenu">...</button>
+            <div class="extra-menu" [hidden]="!showExtraMenu">
+                @if(currentPage !== null && currentPage > 0){
+                    <div (click)="deletePage()">Delete Page</div>
+                }
+                <div (click)="deleteList()">@if(listType === 'note'){ Delete Note } @else if(listType === 'tag') { Delete Tag }</div>
+            </div>
+        </div>
+        @if((loadOriginParagraph | async) !== null){
+        <a
+            [routerLink]="['/lists', (loadOriginParagraph | async)!.creation_type, (loadOriginParagraph | async)!.creation_list_id, (loadOriginParagraph | async)!.origin_page]"
+            >Load origin of selected time</a
+        >
+        }
+    </div>
+    <h3 class="title">
+        @if(listColor !== null) {
+        <div class="tag-color-disc" [ngStyle]="{'background-color': listColor}"></div>
+        } @if(listType === 'tag') { {{listName || 'Untitled'}} } @else {
+        <textarea rows="1" autosize type="text" class="title-input" placeholder="Untitled" [(ngModel)]="listName"> </textarea>
+        }
+    </h3>
+    <div class="note-editor-pannel">
+        <div
+            #editor
+            class="editor"
+            contenteditable="true"
+            (paste)="handlePaste($event)"
+            (input)="onInput($event)"
+            (keydown)="onKeyDown($event)"
+            (click)="onEditorClick($event)"
+        ></div>
+    </div>
+    <div class="pager">
+        <div class="pages">
+            <i class="fa-solid fa-arrow-left"></i>
+            <div [class.current-page]="null === currentPage" (click)="loadPage(0)"><i class="fa-solid fa-home"></i></div>
+            @for(page of pages; track page){
+            <div [class.current-page]="page === currentPage" (click)="loadPage(page)">{{page}}</div>
+            }
+            <i class="fa-solid fa-arrow-right"></i>
+        </div>
+    </div>
+</div>
+
+<div class="action-panel">
+    <div class="areas" [ngClass]="{expanded: popListOut}">
+        <div class="side-groups">
+            <app-tag-picker
+                [hidden]="popListOut"
+                [tags]="tags"
+                (assignTag)="assignTagToRows($event)"
+                (unassignTag)="unassignTags($event)"
+                (removeTag)="deleteTag($event)"
+                (addTag)="addTag($event)"
+                (moveClick)="moveItems($event)"
+                [completeAdd]="updateAddName"
+                [completeDelete]="updateDeleteName"
+            ></app-tag-picker>
+            <div class="active-list-panel">
+                <div class="active-list">
+                    <div class="preview-container">
+                        <div class="preview-header">
+                            Preview Panel
+                            <select name="" id="">
+                                <option value="">Sort Preview</option>
+                                <option value="">Pre-Assign</option>
+                                <option value="">Priority</option>
+                                <option value="">Updated</option>
+                                <option value="">Created</option>
+                            </select>
+                        </div>
+                        <div><i class="fa-solid fa-arrow-left"></i> 1 2 3 4 5 6 7 <i class="fa-solid fa-arrow-right"></i></div>
+                        <div class="pop-out">
+                            <i
+                                class="maximize-icon fa-solid fa-up-right-and-down-left-from-center"
+                                *ngIf="popListOut === false"
+                                (click)="popListOut = true"
+                            ></i>
+                            <i class="maximize-icon fa-solid fa-down-left-and-up-right-to-center" *ngIf="popListOut === true" (click)="popListOut = false"></i>
+                        </div>
+                    </div>
+                    <ol>
+                        <li>This panel can be used to preview lists</li>
+                        <li>Or it can be used to view similar notes</li>
+                        <li>When entries are added and tag them it populates this list</li>
+                        <li>With previous notes if similar text is found elsewhere</li>
+                        <li>Pagination is available above to navigate between similar notes</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

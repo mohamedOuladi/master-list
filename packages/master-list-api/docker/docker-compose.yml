@@ -34,14 +34,11 @@ services:
     profiles:
       - init
 
-  migrate:
-    depends_on:
-      db:
-        condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
-    image: openfga/openfga:latest
-    container_name: migrate
+  db-test:
+    image: postgres:15
+    container_name: postgres_test_container
+    tmpfs:
+      - /var/lib/postgresql/test  # ephemeral: resets on container restart
     environment:
       - OPENFGA_DATASTORE_ENGINE=postgres
       - OPENFGA_DATASTORE_URI=postgres://notes_user:notes_password@db:5432/notes_db?sslmode=disable&search_path=openfga
