@@ -1,52 +1,54 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15
-    container_name: postgres_list_container
-    volumes:
-      - ./postgres/data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=notes_user
-      - POSTGRES_PASSWORD=notes_password
-      - POSTGRES_DB=notes_db
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "notes_user", "-d", "notes_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # db:
+  #   image: postgres:15
+  #   container_name: postgres_list_container
+  #   volumes:
+  #     - ./postgres/data:/var/lib/postgresql/data
+  #   environment:
+  #     - POSTGRES_USER=notes_user
+  #     - POSTGRES_PASSWORD=notes_password
+  #     - POSTGRES_DB=notes_db
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: [ "CMD", "pg_isready", "-U", "notes_user", "-d", "notes_db" ]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
-  db-init:
-    build:
-      context: ..
-      dockerfile: docker/postgres/Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - POSTGRES_HOST=db
-      - PYTHONPATH=/app
-      - POSTGRES_USER=notes_user
-      - POSTGRES_PASSWORD=notes_password
-      - POSTGRES_DB=notes_db
-    profiles:
-      - init
+  # db-init:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/postgres/Dockerfile
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     - POSTGRES_HOST=db
+  #     - PYTHONPATH=/app
+  #     - POSTGRES_USER=notes_user
+  #     - POSTGRES_PASSWORD=notes_password
+  #     - POSTGRES_DB=notes_db
+  #     - OPENFGA_STORAGE_TYPE=postgres
+  #     - OPENFGA_POSTGRES_URI=postgres://notes_user:notes_password@db:5432/notes_db?sslmode=disable&search_path=openfga
+  #   profiles:
+  #     - init
 
-  db-test:
-    image: postgres:15
-    container_name: postgres_test_container
-    tmpfs:
-      - /var/lib/postgresql/test  # ephemeral: resets on container restart
-    environment:
-      - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://notes_user:notes_password@db:5432/notes_db?sslmode=disable&search_path=openfga
-    command: migrate
-    networks:
-      - default
-    profiles:
-      - init
+  # db-test:
+  #   image: postgres:15
+  #   container_name: postgres_test_container
+  #   tmpfs:
+  #     - /var/lib/postgresql/test  # ephemeral: resets on container restart
+  #   environment:
+  #     - OPENFGA_DATASTORE_ENGINE=postgres
+  #     - OPENFGA_DATASTORE_URI=postgres://notes_user:notes_password@db:5432/notes_db?sslmode=disable&search_path=openfga
+  #   command: migrate
+  #   networks:
+  #     - default
+  #   profiles:
+  #     - init
 
 
     #       - POSTGRES_USER=test_user
@@ -62,20 +64,94 @@ services:
     # profiles:
     #   - test
 
+
+  db:
+    image: postgres:15
+    container_name: postgres_list_container
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    env_file:
+      - ../.env
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # the load database should be a separate shell script, need to create a schema for database
+  # but i do want the database created if you provide the right parameter so I can modify the python and the table updates
+  db-init:
+    build:
+      context: ..
+      dockerfile: docker/postgres/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - POSTGRES_HOST=db
+      - PYTHONPATH=/app  # Make sure your app directory is in PYTHONPATH
+    profiles:
+      - init
+
+  db-test:
+    image: postgres:15
+    container_name: postgres_test_container
+    tmpfs:
+      - /var/lib/postgresql/test  # ephemeral: resets on container restart
+    environment:
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_DB=test_db
+    ports:
+      - "5433:5432"  # Expose test DB on a different port
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "test_user", "-d", "test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - test
+  
+
+  openfga_db:
+    image: postgres:15
+    container_name: openfga_db_container
+    # volumes:
+    #   - ./postgres/openfga_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=openfga_user
+      - POSTGRES_PASSWORD=openfga_password
+      - POSTGRES_DB=openfga_db
+    ports:
+      - "5440:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "openfga_user", "-d", "openfga_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   openfga:
     image: openfga/openfga:v1.5.4
     restart: always
     command: run --experimentals enable-list-users
     environment:
       - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://notes_user:notes_password@db:5432/notes_db?sslmode=disable&search_path=openfga
+      - OPENFGA_DATASTORE_URI=postgres://openfga_user:openfga_password@openfga_db:5432/openfga_db?sslmode=disable&search_path=openfga
       - OPENFGA_PLAYGROUND_ENABLED=true
     ports:
       - 8080:8080
       - 8089:8081
       - 3000:3000
     depends_on:
-      - db
+      - openfga_db
     networks:
       - default
 
